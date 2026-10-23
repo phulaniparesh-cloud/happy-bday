@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Happy Birthday! 🎂</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{min-height:100vh;overflow-x:hidden;font-family:'Segoe UI',sans-serif;color:white;background:linear-gradient(135deg,#16002b,#4b126b,#120c35);text-align:center}
+.container{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:30px 16px;position:relative;z-index:2}
+h1{font-size:clamp(2.4rem,8vw,5rem);color:#ffd6f6;text-shadow:0 0 20px #ff47c8,0 0 45px #a020f0;animation:glow 2s infinite alternate}
+.subtitle{margin:15px 0;font-size:1.2rem;color:#ffe3ff}
+.cake{font-size:110px;margin:22px 0;animation:bounce 2s infinite;cursor:pointer;filter:drop-shadow(0 0 18px #ff73d5)}
+button{padding:14px 28px;margin:10px;border:none;border-radius:30px;color:white;font-size:16px;font-weight:bold;background:linear-gradient(90deg,#ff42bc,#8a4dff);cursor:pointer;box-shadow:0 0 20px #d44dff66;transition:transform .25s,box-shadow .25s}
+button:hover{transform:scale(1.08);box-shadow:0 0 30px #ff42bc}
+#message,#giftMessage{display:none;max-width:550px;padding:25px;margin-top:20px;border:1px solid #ffb9f3;border-radius:20px;background:#ffffff15;backdrop-filter:blur(10px);line-height:1.8;animation:appear 1s ease}
+#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5}
+#effects{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:4}
+.balloon{position:fixed;bottom:-150px;font-size:45px;animation:floatUp linear infinite;z-index:1;pointer-events:none}
+.floating{position:absolute;bottom:-60px;animation:floatUp linear forwards;filter:drop-shadow(0 0 8px #ff8bd8)}
+.sparkle{position:fixed;pointer-events:none;z-index:8;animation:sparkleOut .8s ease-out forwards}
+.gift{font-size:75px;cursor:pointer;display:inline-block;transition:transform .3s;animation:wiggle 2s infinite}
+.gift:hover{transform:scale(1.15) rotate(-8deg)}
+.section{margin-top:25px}
+.small{font-size:.95rem;color:#f4d8ff;max-width:600px;line-height:1.7}
+footer{margin-top:35px;color:#e8caff;font-size:13px}
+@keyframes glow{from{text-shadow:0 0 10px #ff47c8}to{text-shadow:0 0 35px #ff47c8,0 0 60px #8a4dff}}
+@keyframes bounce{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-15px) rotate(3deg)}}
+@keyframes floatUp{from{transform:translateY(0) rotate(0);opacity:0}10%{opacity:1}to{transform:translateY(-125vh) rotate(25deg);opacity:0}}
+@keyframes appear{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sparkleOut{0%{transform:scale(.2) rotate(0);opacity:0}30%{opacity:1}100%{transform:scale(1.5) rotate(90deg);opacity:0}}
+@keyframes wiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)}}
+@keyframes candleOff{to{opacity:.25;filter:grayscale(1);transform:scale(.9)}}
+@media(max-width:480px){.cake{font-size:90px}button{padding:12px 18px;font-size:14px}.subtitle{font-size:1rem}}
+</style>
+</head>
+<body>
+<canvas id="confetti"></canvas><div id="effects"></div>
+<div class="container">
+  <p style="letter-spacing:5px;color:#ffb6f2">✨ A SPECIAL DAY ✨</p>
+  <h1>Happy Birthday!</h1>
+  <p class="subtitle">Today is all about YOU! 💖</p>
+  <div class="cake" id="cake" title="Tap the cake!" role="button" aria-label="Birthday cake">🎂</div>
+  <p>Wishing you endless happiness, love and magic. 🌟</p>
+  <div>
+    <button onclick="celebrate()">🎉 Celebrate!</button>
+    <button onclick="showMessage()">💌 Open Your Surprise</button>
+  </div>
+  <div id="message">
+    <h2>🎁 A Special Wish For You 🎁</h2>
+    <p>May your birthday sparkle with happiness, your dreams turn into reality, and your life be filled with unforgettable moments. 💗</p>
+    <h2 style="margin-top:15px">You deserve the best! 🥳</h2>
+  </div>
+
+  <div class="section">
+    <h2>🕯️ Make a Birthday Wish</h2>
+    <p class="small">Tap the cake to blow out the candles, then make a wish!</p>
+    <button id="candleButton" onclick="blowCandles()">🕯️ Blow Out Candles</button>
+    <p id="wishResult" class="small" aria-live="polite"></p>
+  </div>
+
+  <div class="section">
+    <h2>🎁 A Little Gift For You</h2>
+    <p class="small">Tap the gift box to discover your surprise.</p>
+    <div class="gift" id="gift" role="button" tabindex="0" aria-label="Open gift" onclick="openGift()">🎁</div>
+    <div id="giftMessage">
+      <h2>✨ Surprise! ✨</h2>
+      <p>You make the world brighter just by being in it. May your year be full of love, laughter and wonderful adventures! 💜</p>
+    </div>
+  </div>
+  <div class="section">
+    <button onclick="toggleMusic()" id="soundButton">🔊 Play Birthday Tune</button>
+    <p class="small">Sound starts only after you press the button.</p>
+  </div>
+  <footer>Made with ❤️ just for you</footer>
+</div>
+<script>
+const canvas=document.getElementById('confetti'),ctx=canvas.getContext('2d');
+const effects=document.getElementById('effects');
+let particles=[],audioContext=null,musicTimer=null,musicOn=false,candlesOut=false,giftOpened=false;
+function resizeCanvas(){canvas.width=innerWidth;canvas.height=innerHeight}
+addEventListener('resize',resizeCanvas);resizeCanvas();
+
+// Floating balloons and hearts
+['🎈','💖','🎈','✨','🎈'].forEach((emoji,i)=>{
+ const el=document.createElement('div');el.className='balloon';el.textContent=emoji;
+ el.style.left=Math.random()*95+'vw';el.style.animationDuration=(8+Math.random()*8)+'s';
+ el.style.animationDelay=(i*1.5)+'s';document.body.appendChild(el);
+});
+function burst(count=180){
+ for(let i=0;i<count;i++)particles.push({x:Math.random()*canvas.width,y:-Math.random()*canvas.height*.5,size:3+Math.random()*6,speed:2+Math.random()*5,drift:(Math.random()-.5)*3,hue:Math.random()*360,rotation:Math.random()*6});
+}
+function animateConfetti(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ particles.forEach(p=>{p.x+=p.drift;p.y+=p.speed;p.rotation+=.04;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rotation);ctx.fillStyle=`hsl(${p.hue},100%,65%)`;ctx.fillRect(0,0,p.size,p.size*1.6);ctx.restore()});
+ particles=particles.filter(p=>p.y<canvas.height+20);requestAnimationFrame(animateConfetti);
+}
+animateConfetti();
+function playNotes(notes=[523.25,659.25,783.99,1046.5]){
+ try{
+  audioContext??=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioContext.state==='suspended')audioContext.resume();
+  notes.forEach((freq,i)=>{const osc=audioContext.createOscillator(),gain=audioContext.createGain(),start=audioContext.currentTime+i*.16;
+   osc.type='sine';osc.frequency.value=freq;gain.gain.setValueAtTime(.12,start);gain.gain.exponentialRampToValueAtTime(.001,start+.32);
+   osc.connect(gain);gain.connect(audioContext.destination);osc.start(start);osc.stop(start+.34)});
+ }catch(e){console.log('Audio is unavailable in this browser.')}
+}
+function playSound(){playNotes()}
+function celebrate(){burst(220);playSound();showMessage();for(let i=0;i<18;i++)setTimeout(()=>floatEmoji(['💖','✨','🎉','⭐'][i%4]),i*90)}
+function showMessage(){const m=document.getElementById('message');m.style.display='block';m.scrollIntoView({behavior:'smooth',block:'nearest'})}
+function floatEmoji(emoji){
+ const el=document.createElement('div');el.className='floating';el.textContent=emoji;el.style.left=Math.random()*95+'vw';
+ el.style.fontSize=(22+Math.random()*25)+'px';el.style.animationDuration=(3+Math.random()*3)+'s';effects.appendChild(el);setTimeout(()=>el.remove(),6500);
+}
+// Sparkle trail works with mouse and touch.
+let lastSparkle=0;
+function sparkle(x,y){
+ const now=Date.now();if(now-lastSparkle<35)return;lastSparkle=now;
+ const el=document.createElement('span');el.className='sparkle';el.textContent=['✨','✦','💖'][Math.floor(Math.random()*3)];
+ el.style.left=x+'px';el.style.top=y+'px';el.style.fontSize=(12+Math.random()*14)+'px';effects.appendChild(el);setTimeout(()=>el.remove(),850);
+}
+addEventListener('pointermove',e=>sparkle(e.clientX,e.clientY));
+addEventListener('pointerdown',e=>{for(let i=0;i<3;i++)setTimeout(()=>sparkle(e.clientX+(Math.random()-.5)*35,e.clientY+(Math.random()-.5)*35),i*30)});
+
+function blowCandles(){
+ const cake=document.getElementById('cake'),result=document.getElementById('wishResult');
+ candlesOut=!candlesOut;
+ if(candlesOut){cake.textContent='🍰';cake.style.animation='candleOff .5s forwards';result.textContent='🌟 Your wish has been sent to the universe! May it come true. 💫';burst(100);playNotes([784,659,523])}
+ else{cake.textContent='🎂';cake.style.animation='bounce 2s infinite';result.textContent='The candles are glowing again. Make another wish! 🕯️'}
+}
+document.getElementById('cake').addEventListener('click',()=>{if(!candlesOut)celebrate();else blowCandles()});
+function openGift(){
+ const gift=document.getElementById('giftMessage');giftOpened=!giftOpened;
+ gift.style.display=giftOpened?'block':'none';document.getElementById('gift').textContent=giftOpened?'🎉':'🎁';
+ if(giftOpened){burst(140);playSound()}
+}
+document.getElementById('gift').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openGift()}});
+function toggleMusic(){
+ if(musicOn){clearInterval(musicTimer);musicOn=false;document.getElementById('soundButton').textContent='🔊 Play Birthday Tune';return}
+ musicOn=true;document.getElementById('soundButton').textContent='🔇 Stop Birthday Tune';
+ // A small original repeating melody made with browser-generated tones.
+ const melody=[523.25,523.25,587.33,523.25,698.46,659.25,523.25,523.25,587.33,523.25,783.99,698.46];
+ let index=0;
+ function nextNote(){
+  if(!musicOn)return;
+  try{
+   audioContext??=new(window.AudioContext||window.webkitAudioContext)();
+   if(audioContext.state==='suspended')audioContext.resume();
+   const osc=audioContext.createOscillator(),gain=audioContext.createGain(),now=audioContext.currentTime;
+   osc.type='triangle';osc.frequency.value=melody[index%melody.length];gain.gain.setValueAtTime(.075,now);gain.gain.exponentialRampToValueAtTime(.001,now+.22);
+   osc.connect(gain);gain.connect(audioContext.destination);osc.start(now);osc.stop(now+.23);index++;
+  }catch(e){}
+ }
+ nextNote();musicTimer=setInterval(nextNote,300);
+}
+</script>
+</body>
+</html>
